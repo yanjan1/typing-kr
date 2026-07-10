@@ -39,31 +39,41 @@
   .grid-note b{ color:var(--ink); }
 
   /* Practice tab layout */
-  .practice-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
-  @media (max-width: 860px){ .practice-grid{ grid-template-columns: 1fr; } }
-  .col h3{ font-family: var(--mono); font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#7a4030; margin:0 0 8px; }
+/* Practice tab layout */
+  .practice-loadbar{
+    position: sticky; top: 0; z-index: 5; background:#fffdf8;
+    border:1px solid var(--rule); border-radius:4px; padding:10px 12px; margin-bottom:14px;
+  }
+  .practice-loadbar .headrow{ display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; font-family:var(--mono); font-size:12px; }
+  .practice-loadbar.collapsed textarea, .practice-loadbar.collapsed .toolbar{ display:none; }
+  .practice-loadbar textarea, .practice-loadbar .toolbar{ margin-top:8px; }
+
+  .practice-stack{ display:flex; flex-direction:column; gap:14px; }
+  .pane-label{ font-family: var(--mono); font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#7a4030; margin:0 0 6px; }
+
   textarea#pasteTarget{
-    width:100%; min-height:140px; font-family:'KrutiDev010', sans-serif; font-size:20px;
+    width:100%; min-height:100px; font-family:'KrutiDev010', sans-serif; font-size:20px;
     border:1px solid var(--rule); border-radius:3px; padding:10px 12px; background:#fffdf8;
   }
-  #targetDisplay{
-    font-family:'KrutiDev010', sans-serif; font-size:24px; line-height:2.1;
-    border:1px solid var(--rule); border-radius:3px; padding:14px 16px; background:#fffdf8;
-    min-height:90px; word-break:break-word;
+  .scroll-pane{
+    height:220px; overflow-y:auto; scroll-behavior:smooth;
+    border:1px solid var(--rule); border-radius:3px; background:#fffdf8; padding:14px 16px;
   }
+  #targetDisplay.scroll-pane{ font-family:'KrutiDev010', sans-serif; font-size:24px; line-height:2.1; word-break:break-word; }
   #targetDisplay .ch-correct{ color:var(--ink); }
   #targetDisplay .ch-incorrect{ color:var(--bad); background:#fbe4e1; border-radius:2px; }
   #targetDisplay .ch-pending{ color:#b7ac93; }
   #targetDisplay .word-current{ background:#fff0d9; border-bottom:2px solid var(--accent); border-radius:2px; }
 
-  #typeBox{
-    font-family:'KrutiDev010', sans-serif; font-size:24px; line-height:2.1; min-height:90px;
-    border:1px solid var(--rule); border-radius:3px; padding:14px 16px; background:#fffdf8; outline:none;
-    word-break:break-word;
-  }
+  #typeBox.scroll-pane{ font-family:'KrutiDev010', sans-serif; font-size:24px; line-height:2.1; outline:none; word-break:break-word; }
   #typeBox:focus{ box-shadow:0 0 0 2px var(--accent) inset; }
   #typeBox:empty:before{ content: attr(data-placeholder); color:#a79c85; font-family:Georgia, serif; font-size:15px; }
 
+  .keychip{ display:inline-block; font-family:var(--mono); font-size:13px; background:var(--ink); color:var(--accent-ink); padding:3px 9px; border-radius:3px; margin:2px 3px; }
+  .keychip.alt{ background:var(--accent); }
+  .keychip.custom{ background:#7a4030; }
+  .keychip.active{ outline:2px solid var(--accent); outline-offset:1px; }
+  /* added new */
   .hint-strip{
     margin-top:10px; padding:10px 14px; background:var(--paper-dark); border:1px dashed var(--rule); border-radius:3px;
     font-family: var(--mono); font-size:12.5px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
@@ -117,6 +127,8 @@
   #unicodeOut{ font-family: 'Noto Sans Devanagari', 'Nirmala UI', sans-serif; font-size:20px; min-height:80px; background:#fffdf8; border:1px solid var(--rule); padding:14px 16px; white-space:pre-wrap; word-break:break-word; }
 
   footer{ font-family: var(--mono); font-size:11px; color:#8a7f68; text-align:center; margin-top:20px; line-height:1.7; }
+
+  
 </style>
 </head>
 <body>
@@ -140,36 +152,50 @@
   </div>
 
   <!-- PRACTICE TAB -->
+ <!-- PRACTICE TAB -->
   <div class="tabpanel active" id="tab-practice">
     <p class="grid-note">
-      Paste real Kruti Dev text on the left (copied from your institute material, a genuine practice site, or your own Writer tab).
-      Type it on the right. The passage is graded byte-for-byte against exactly what you pasted — no approximation involved here.
-      The word-by-word strip below shows a plain-Hindi reading hint for the current word (best-effort conversion — toggle it off if you don't want the "meaning spoiler").
+      Paste real Kruti Dev text, load it, then type it below. Graded byte-for-byte against what you pasted.
+      "Next keys" tells you exactly what to press for the upcoming characters — plain keys, or <b>Alt+0XXX</b> for glyphs not on a normal keyboard.
     </p>
-    <div class="practice-grid">
-      <div class="col">
-        <h3>Target passage (paste here)</h3>
-        <textarea id="pasteTarget" placeholder="Paste Kruti Dev text here, then click 'Load passage' to start…"></textarea>
-        <div class="toolbar">
-          <button id="btnLoadPassage" class="primary">Load passage</button>
-          <button id="btnUseWriterText">Use text from Writer tab</button>
-          <label class="inline"><input type="checkbox" id="chkShowHints" checked> Show word hints</label>
-        </div>
+
+    <div class="practice-loadbar" id="loadBar">
+      <div class="headrow" id="loadBarToggle">
+        <strong>📋 Load / change passage</strong>
+        <span id="loadBarChevron">▲ collapse</span>
       </div>
-      <div class="col">
-        <h3>Target (reference while typing)</h3>
-        <div id="targetDisplay">Paste a passage and click "Load passage" to begin.</div>
+      <textarea id="pasteTarget" placeholder="Paste Kruti Dev text here, then click 'Load passage'…"></textarea>
+      <div class="toolbar">
+        <button id="btnLoadPassage" class="primary">Load passage</button>
+        <button id="btnUseWriterText">Use text from Writer tab</button>
+        <label class="inline"><input type="checkbox" id="chkShowHints" checked> Word meaning hints</label>
+        <label class="inline"><input type="checkbox" id="chkAutoScroll" checked> Auto-scroll to caret</label>
       </div>
     </div>
 
-    <h3 style="margin-top:16px;">Your typing</h3>
-    <div id="typeBox" contenteditable="true" data-placeholder="Load a passage above, then click here and start typing…"></div>
+    <div class="practice-stack">
+      <div>
+        <h3 class="pane-label">Reference</h3>
+        <div id="targetDisplay" class="scroll-pane">Paste a passage and click "Load passage" to begin.</div>
+      </div>
+      <div>
+        <h3 class="pane-label">Your typing</h3>
+        <div id="typeBox" class="scroll-pane" contenteditable="true" data-placeholder="Load a passage above, then click here and start typing…"></div>
+      </div>
+    </div>
+
+    <div class="hint-strip" id="keyHintStrip">
+      <span>Next keys:</span>
+      <span id="keyHintChips"></span>
+    </div>
+
     <div class="hint-strip" id="hintStrip" style="display:none;">
       <span>Current word:</span>
       <span class="word-kd" id="hintKD"></span>
       <span class="arrow">→</span>
       <span class="word-uni" id="hintUni"></span>
     </div>
+
     <div class="statsbar">
       <div class="stat"><b id="statTime">0:00</b>Elapsed</div>
       <div class="stat"><b id="statChars">0</b>Chars typed</div>
@@ -445,6 +471,49 @@ document.getElementById('btnConvert').addEventListener('click', ()=>{
 });
 
 // ---- Practice tab ----
+// ---- reverse lookup: codepoint -> byte/extra ----
+const REVERSE_BYTE = {};
+for(const [b,cp] of Object.entries(BYTE_TABLE)) REVERSE_BYTE[cp] = Number(b);
+REVERSE_BYTE[EXTRA_GLYPH.codepoint] = 'extra';
+
+function keyHintForByte(byte){
+  for(const [desc, b] of Object.entries(keymap)){
+    if(String(b) === String(byte)) return {label: desc.replace(/\+/g,' + '), type:'custom'};
+  }
+  if(byte === 'extra') return {label:'Alt+0'+Object.keys(BYTE_TABLE).find(k=>false) || 'bound key', type:'alt'};
+  const n = Number(byte);
+  if(n>=32 && n<=126) return {label:String.fromCharCode(n), type:'key'};
+  return {label:'Alt+0'+byte, type:'alt'};
+}
+function keyHintForChar(ch){
+  const cp = ch.codePointAt(0);
+  if(!REVERSE_BYTE.hasOwnProperty(cp)) return {label:ch, type:'key'};
+  return keyHintForByte(REVERSE_BYTE[cp]);
+}
+function renderKeyHints(){
+  const chipsEl = document.getElementById('keyHintChips');
+  if(!targetText){ chipsEl.innerHTML = '<span style="color:#a79c85;font-family:var(--mono);">load a passage to see hints</span>'; return; }
+  const curPos = typeBox.innerText.length;
+  if(curPos >= targetText.length){ chipsEl.innerHTML = '<span style="font-family:var(--mono);color:var(--good);">passage complete 🎉</span>'; return; }
+  const N = 6;
+  let html = '';
+  for(let i=curPos; i<Math.min(curPos+N, targetText.length); i++){
+    const ch = targetText[i];
+    const hint = keyHintForChar(ch);
+    let label = hint.label === ' ' ? '␣' : hint.label;
+    const cls = 'keychip' + (hint.type==='alt'?' alt':'') + (hint.type==='custom'?' custom':'') + (i===curPos?' active':'');
+    html += `<span class="${cls}">${String(label).replace(/</g,'&lt;')}</span>`;
+  }
+  chipsEl.innerHTML = html;
+}
+function autoScrollPanes(){
+  if(!document.getElementById('chkAutoScroll').checked) return;
+  const cur = targetDisplay.querySelector('.word-current');
+  if(cur) cur.scrollIntoView({block:'center', inline:'nearest'});
+  typeBox.scrollTop = typeBox.scrollHeight;
+}
+
+// ---- Practice tab ----
 const pasteTarget = document.getElementById('pasteTarget');
 const targetDisplay = document.getElementById('targetDisplay');
 const typeBox = document.getElementById('typeBox');
@@ -454,7 +523,7 @@ const hintUni = document.getElementById('hintUni');
 const chkShowHints = document.getElementById('chkShowHints');
 
 let targetText = "";
-let targetWords = []; // {start,end,text}
+let targetWords = [];
 let practiceStartTime = null;
 let practiceTimerHandle = null;
 
@@ -462,6 +531,9 @@ attachTypingHandlers(typeBox, document.getElementById('altIndicator2'), onPracti
 
 document.getElementById('btnLoadPassage').addEventListener('click', ()=>{
   loadPassage(pasteTarget.value);
+  const bar = document.getElementById('loadBar');
+  bar.classList.add('collapsed');
+  document.getElementById('loadBarChevron').textContent = '▼ expand';
 });
 document.getElementById('btnUseWriterText').addEventListener('click', ()=>{
   pasteTarget.value = editor.innerText;
@@ -476,14 +548,17 @@ document.getElementById('btnResetPractice').addEventListener('click', ()=>{
 chkShowHints.addEventListener('change', ()=>{
   hintStrip.style.display = chkShowHints.checked ? 'flex' : 'none';
 });
+document.getElementById('loadBarToggle').addEventListener('click', ()=>{
+  const bar = document.getElementById('loadBar');
+  bar.classList.toggle('collapsed');
+  document.getElementById('loadBarChevron').textContent = bar.classList.contains('collapsed') ? '▼ expand' : '▲ collapse';
+});
 
 function computeWords(text){
   const words = [];
   const re = /\S+/g;
   let m;
-  while((m = re.exec(text)) !== null){
-    words.push({start:m.index, end:m.index+m[0].length, text:m[0]});
-  }
+  while((m = re.exec(text)) !== null) words.push({start:m.index, end:m.index+m[0].length, text:m[0]});
   return words;
 }
 
@@ -501,6 +576,7 @@ function renderTargetDiff(){
   if(!targetText){
     targetDisplay.textContent = 'Paste a passage and click "Load passage" to begin.';
     hintStrip.style.display = 'none';
+    renderKeyHints();
     return;
   }
   const typed = typeBox.innerText;
@@ -526,9 +602,11 @@ function renderTargetDiff(){
     hintStrip.style.display = 'flex';
     hintKD.textContent = w.text;
     hintUni.textContent = convertKrutiToUnicode(w.text);
-  } else if(chkShowHints.checked === false){
+  } else {
     hintStrip.style.display = 'none';
   }
+  renderKeyHints();
+  autoScrollPanes();
 }
 
 function onPracticeInput(){
@@ -546,9 +624,7 @@ function updateStats(){
   const elapsedMs = practiceStartTime ? (Date.now() - practiceStartTime) : 0;
   const elapsedMin = Math.max(elapsedMs/60000, 1/60);
   let correct=0, total=typed.length;
-  for(let i=0;i<typed.length;i++){
-    if(targetText[i] === typed[i]) correct++;
-  }
+  for(let i=0;i<typed.length;i++){ if(targetText[i] === typed[i]) correct++; }
   const accuracy = total>0 ? Math.round((correct/total)*100) : 100;
   const grossWpm = Math.round((total/5)/elapsedMin) || 0;
   const kdph = Math.round((total/elapsedMin)*60) || 0;
@@ -562,6 +638,5 @@ function updateStats(){
 }
 
 loadKeymap();
-</script>
 </body>
 </html>
