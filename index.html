@@ -41,6 +41,18 @@
   /* Practice tab layout */
   .practice-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
   @media (max-width: 860px){ .practice-grid{ grid-template-columns: 1fr; } }
+
+  .collapsible{ border:1px solid var(--rule); border-radius:4px; background:#fffdf8; overflow:hidden; }
+  .collapsible-header{
+    font-family: var(--mono); font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#7a4030;
+    padding:10px 14px; cursor:pointer; user-select:none; background:var(--paper-dark);
+    display:flex; align-items:center; gap:8px;
+  }
+  .collapsible-header:hover{ background:#ddd2b8; }
+  .collapsible-header #pasteToggleIcon{ font-size:11px; transition: transform 0.15s; display:inline-block; }
+  .collapsible.collapsed #pasteToggleIcon{ transform: rotate(-90deg); }
+  .collapsible-body{ padding:14px; }
+  .collapsible.collapsed .collapsible-body{ display:none; }
   .col h3{ font-family: var(--mono); font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#7a4030; margin:0 0 8px; }
   textarea#pasteTarget{
     width:100%; min-height:140px; font-family:'KrutiDev010', sans-serif; font-size:20px;
@@ -49,7 +61,7 @@
   #targetDisplay{
     font-family:'KrutiDev010', sans-serif; font-size:24px; line-height:2.1;
     border:1px solid var(--rule); border-radius:3px; padding:14px 16px; background:#fffdf8;
-    min-height:90px; word-break:break-word;
+    min-height:160px; word-break:break-word;
   }
   #targetDisplay .ch-correct{ color:var(--ink); }
   #targetDisplay .ch-incorrect{ color:var(--bad); background:#fbe4e1; border-radius:2px; }
@@ -57,7 +69,7 @@
   #targetDisplay .word-current{ background:#fff0d9; border-bottom:2px solid var(--accent); border-radius:2px; }
 
   #typeBox{
-    font-family:'KrutiDev010', sans-serif; font-size:24px; line-height:2.1; min-height:90px;
+    font-family:'KrutiDev010', sans-serif; font-size:24px; line-height:2.1; min-height:160px;
     border:1px solid var(--rule); border-radius:3px; padding:14px 16px; background:#fffdf8; outline:none;
     word-break:break-word;
   }
@@ -179,13 +191,16 @@
   <!-- PRACTICE TAB -->
   <div class="tabpanel active" id="tab-practice">
     <p class="grid-note">
-      Paste real Kruti Dev text on the left (copied from your institute material, a genuine practice site, or your own Writer tab).
-      Type it on the right. The passage is graded byte-for-byte against exactly what you pasted — no approximation involved here.
+      Paste real Kruti Dev text (copied from your institute material, a genuine practice site, or your own Writer tab), then type it in the box alongside the reference.
+      The passage is graded byte-for-byte against exactly what you pasted — no approximation involved here.
       The word-by-word strip below shows a plain-Hindi reading hint for the current word (best-effort conversion — toggle it off if you don't want the "meaning spoiler").
     </p>
-    <div class="practice-grid">
-      <div class="col">
-        <h3>Target passage (paste here)</h3>
+
+    <div class="collapsible" id="pasteSection">
+      <div class="collapsible-header" id="pasteToggle">
+        <span id="pasteToggleIcon">▾</span> Target passage (paste here)
+      </div>
+      <div class="collapsible-body" id="pasteBody">
         <textarea id="pasteTarget" placeholder="Paste Kruti Dev text here, then click 'Load passage' to start…"></textarea>
         <div class="toolbar">
           <button id="btnLoadPassage" class="primary">Load passage</button>
@@ -193,14 +208,19 @@
           <label class="inline"><input type="checkbox" id="chkShowHints" checked> Show word hints</label>
         </div>
       </div>
+    </div>
+
+    <div class="practice-grid" style="margin-top:14px;">
       <div class="col">
-        <h3>Target (reference while typing)</h3>
-        <div id="targetDisplay">Paste a passage and click "Load passage" to begin.</div>
+        <h3>Target (reference)</h3>
+        <div id="targetDisplay">Paste a passage above and click "Load passage" to begin.</div>
+      </div>
+      <div class="col">
+        <h3>Your typing</h3>
+        <div id="typeBox" contenteditable="true" data-placeholder="Load a passage above, then click here and start typing…"></div>
       </div>
     </div>
 
-    <h3 style="margin-top:16px;">Your typing</h3>
-    <div id="typeBox" contenteditable="true" data-placeholder="Load a passage above, then click here and start typing…"></div>
     <div class="hint-strip" id="hintStrip" style="display:none;">
       <span>Current word:</span>
       <span class="word-kd" id="hintKD"></span>
@@ -602,12 +622,18 @@ let practiceTimerHandle = null;
 
 attachTypingHandlers(typeBox, document.getElementById('altIndicator2'), onPracticeInput);
 
+document.getElementById('pasteToggle').addEventListener('click', ()=>{
+  document.getElementById('pasteSection').classList.toggle('collapsed');
+});
+
 document.getElementById('btnLoadPassage').addEventListener('click', ()=>{
   loadPassage(pasteTarget.value);
+  document.getElementById('pasteSection').classList.add('collapsed');
 });
 document.getElementById('btnUseWriterText').addEventListener('click', ()=>{
   pasteTarget.value = editor.innerText;
   loadPassage(pasteTarget.value);
+  document.getElementById('pasteSection').classList.add('collapsed');
 });
 document.getElementById('btnResetPractice').addEventListener('click', ()=>{
   typeBox.innerHTML = '';
